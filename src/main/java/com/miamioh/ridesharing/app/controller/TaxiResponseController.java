@@ -29,7 +29,10 @@ import com.miamioh.ridesharing.app.request.RideSharingConfirmation;
 import com.miamioh.ridesharing.app.request.RideSharingConfirmationAck;
 import com.miamioh.ridesharing.app.utilities.helper.TaxiUtility;
 
+import lombok.extern.slf4j.Slf4j;
+
 @RestController
+@Slf4j
 public class TaxiResponseController {
 	
 	@Autowired
@@ -47,7 +50,7 @@ public class TaxiResponseController {
 	@Resource(name="redisTemplate")
 	private ZSetOperations<String, Event> zSetOperations;
 	
-	@GetMapping(value = "/RideSharing/TaxiResponses/{request_id}", produces = MediaType.APPLICATION_JSON_VALUE)
+	@GetMapping(value = "/RideSharing/TaxiResponse/{request_id}", produces = MediaType.APPLICATION_JSON_VALUE)
 	@ResponseBody
 	public TaxiResponse getTaxiResponsesByRequestId(@NotBlank @PathVariable(value="request_id") String requestId){
 		Iterable<TaxiResponse> taxiResponses = taxiResponseDao.getTaxiResponses(taxiResponseDao.getResponseIds(requestId));
@@ -72,7 +75,9 @@ public class TaxiResponseController {
 	@GetMapping(value="/RideSharing/Taxis", produces=MediaType.APPLICATION_JSON_VALUE)
 	@ResponseBody
 	public List<Taxi> getAllTaxi(){
-		return taxiUtility.getAllTaxi();
+		List<Taxi> allTaxi = taxiUtility.getAllTaxi();
+		log.info("Total number of Taxis: "+allTaxi.size());
+		return allTaxi;
 	}
 	
 	
@@ -83,7 +88,7 @@ public class TaxiResponseController {
 		RideSharingConfirmationAck ack = new RideSharingConfirmationAck();
 		ack.setResponseId(rideSharingConfirmation.getResponseId());
 		Taxi taxi = taxiUtility.getTaxiInstance(rideSharingConfirmation.getTaxiId());
-		int noOfPassenger = taxi.getNoOfPassenger().get();
+		int noOfPassenger = taxi.getNoOfPassenger().get();//add synchronized block
 		if(rideSharingConfirmation.isConfirmed() && noOfPassenger < AppConstants.TAXI_MAX_CAPACITY) {
 			
 			 Optional<TempScheduledEventList> findById = tempScheduledEventListRepository.findById(rideSharingConfirmation.getResponseId());

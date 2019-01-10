@@ -23,7 +23,10 @@ import com.miamioh.ridesharing.app.entity.Event;
 import com.miamioh.ridesharing.app.entity.Taxi;
 import com.miamioh.ridesharing.app.request.RideSharingRequest;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Service
+@Slf4j
 public class ScheduleTaxiEventsHelper {
 	
 	@Autowired
@@ -39,6 +42,7 @@ public class ScheduleTaxiEventsHelper {
 	private ZSetOperations<String, Event> zSetOperations;
 
 	public void scheduleEvents(Taxi taxi, RideSharingRequest request) {
+		log.info("Inside Taxi Scheduler Utility RequestId: "+request.getRequestID());
 		Graph graph = new Graph();
 		Vertex startVertex = new Vertex(taxi.getTaxiId(), taxi.getLatitude(), taxi.getLongitude(), VertexTypeEnum.TAXI);
 		graph.addSingleVertex(startVertex);
@@ -80,6 +84,7 @@ public class ScheduleTaxiEventsHelper {
 		startVertex.setLongitude(taxi.getLongitude());*/
 		PrimMST mst = new PrimMST();
 		List<Edge> minSpanningTreeEdges = mst.primMST(graph, startVertex, dropToPickupVertexMap);// check that drop is always after pick up
+		log.info("Request ID: "+request.getRequestID()+" Minimum Spanning tree: "+minSpanningTreeEdges);
 		TaxiResponse response = new TaxiResponse();
 		String responseId = UUID.randomUUID().toString();
 		response.setResponseId(responseId);
@@ -123,6 +128,7 @@ public class ScheduleTaxiEventsHelper {
 		request.getDropOffEvent().setIndex(overallDropIndex);
 		response.setPickUpIndex(dropUpindex);
 		response.setTimeToDestinationInMinutes(calculateTime(totalWeightToDestInMst));
+		log.info("Taxi Response Computed: "+response);
 		taxiResponseDao.save(response);
 		saveEventsInTempScheduledEventList(request, responseId, taxi.getTaxiId());
 		

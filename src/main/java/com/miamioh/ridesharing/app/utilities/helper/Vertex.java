@@ -7,8 +7,9 @@ import com.miamioh.ridesharing.app.constants.VertexTypeEnum;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.ToString;
 
-@Getter @Setter
+@Getter @Setter @ToString
 public class Vertex {
 	
 		private String id;

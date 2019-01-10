@@ -6,8 +6,9 @@ import com.miamioh.ridesharing.app.entity.Event;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.ToString;
 
-@Getter @Setter
+@Getter @Setter @ToString
 public class RideSharingRequest {
 	
 	private String requestID;

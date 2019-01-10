@@ -24,7 +24,10 @@ import com.miamioh.ridesharing.app.constants.AppConstants;
 import com.miamioh.ridesharing.app.entity.Taxi;
 import com.miamioh.ridesharing.app.request.RideSharingRequest;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Component
+@Slf4j
 public class TaxiUtility {
 	
 	@Resource(name="redisTemplate")
@@ -38,6 +41,7 @@ public class TaxiUtility {
 	private static final Map<String, Taxi> taxiHub = new ConcurrentHashMap<>();
 	
 	public void registerTaxi(Taxi taxi) {
+		log.info("Registering Taxi with taxiId: "+taxi.getTaxiId());
 		if(taxi!=null && !taxiHub.containsKey(taxi.getTaxiId())) {
 			this.geoOperations.add(GEO_SPATIAL_KEY, new Point(taxi.getLongitude(), taxi.getLatitude()), taxi.getTaxiId());
 			taxiHub.putIfAbsent(taxi.getTaxiId(), taxi);
@@ -56,6 +60,7 @@ public class TaxiUtility {
 		for(GeoResult< GeoLocation<String>> geoResult: content) {
 			nearByTaxiList.add(taxiHub.get((geoResult.getContent().getName())));
 		}
+		log.info("RequestId: "+request.getRequestID()+" List of near by Taxis fetched: "+nearByTaxiList);
 		for(Taxi taxi: nearByTaxiList) {
 			//taxi.addEventSchedule(request);
 			CompletableFuture.runAsync(() -> scheduleTaxiEventsHelper.scheduleEvents(taxi, request));

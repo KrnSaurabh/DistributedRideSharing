@@ -7,8 +7,9 @@ import java.util.Map;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.ToString;
 
-@Getter @Setter
+@Getter @Setter @ToString
 public class Graph {
 	private Map<String, Vertex> allVertex;
 	private List<Edge> allEdges;

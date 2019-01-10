@@ -8,6 +8,7 @@ import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
+import org.springframework.kafka.support.converter.StringJsonMessageConverter;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 
 import com.miamioh.ridesharing.app.config.params.KafkaConsumerConfigParams;
@@ -26,7 +27,7 @@ public class KafkaConsumerConfig {
 				new StringDeserializer(), new JsonDeserializer<>(RideSharingRequest.class));
 		factory.setConsumerFactory(consumerFactory);
 		factory.setConcurrency(1);
-		factory.setBatchListener(true);
+		factory.setBatchListener(false);
 		factory.getContainerProperties().setAckMode(AckMode.MANUAL);
 		return factory;
 	}
@@ -35,13 +36,21 @@ public class KafkaConsumerConfig {
 	@DependsOn("kafkaConsumerConfigParams")
 	public ConcurrentKafkaListenerContainerFactory<String, Taxi> batchFactoryRegisterTaxi(KafkaConsumerConfigParams kafkaConsumerConfigParams) {
 		ConcurrentKafkaListenerContainerFactory<String, Taxi> factory = new ConcurrentKafkaListenerContainerFactory<>();
+		JsonDeserializer<Taxi> ds = new JsonDeserializer<>(Taxi.class);
+		//ds.addTrustedPackages("*");
 		DefaultKafkaConsumerFactory<String, Taxi> consumerFactory = new DefaultKafkaConsumerFactory<>(kafkaConsumerConfigParams.getConsumerConfigWithJsonDeserializer(), 
-				new StringDeserializer(), new JsonDeserializer<>(Taxi.class));
+				new StringDeserializer(), ds);
+		
 		factory.setConsumerFactory(consumerFactory);
 		factory.setConcurrency(1);
-		factory.setBatchListener(true);
+		factory.setBatchListener(false);
 		factory.getContainerProperties().setAckMode(AckMode.MANUAL);
 		return factory;
 	}
+	
+	/*@Bean
+    public StringJsonMessageConverter jsonConverter() {
+        return new StringJsonMessageConverter();
+    }*/
 	
 }
