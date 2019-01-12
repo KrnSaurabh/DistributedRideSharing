@@ -7,8 +7,9 @@ import org.springframework.data.redis.core.RedisHash;
 
 import lombok.Getter;
 import lombok.Setter;
+import lombok.ToString;
 
-@Getter @Setter
+@Getter @Setter @ToString
 @RedisHash("TaxiResponse")
 public class TaxiResponse implements Serializable {
 	

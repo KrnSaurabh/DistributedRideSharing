@@ -95,7 +95,7 @@ public class ScheduleTaxiEventsHelper {
 		response.setAvailableSeats(AppConstants.TAXI_MAX_CAPACITY-taxi.getNoOfPassenger().get()); // increament no Of passenger in each taxi confirmation
 		int overallPickIndex = 0;
 		int pickUpindex = 0;
-		double totalWeightInMst = 0;
+		double totalWeightInMst = 0.0;
 		for(Edge edge: minSpanningTreeEdges) {
 			if(edge.getEndVertex().getType().equals(VertexTypeEnum.PICKUP)) {
 				pickUpindex++;
@@ -106,18 +106,28 @@ public class ScheduleTaxiEventsHelper {
 				break;
 			}
 		}
+		log.info("Request ID: "+request.getRequestID()+" Taxi Id: "+taxi.getTaxiId()+" pickUpIndex: "+pickUpindex);
+		log.info("Request ID: "+request.getRequestID()+" Taxi Id: "+taxi.getTaxiId()+" OverallPickUpIndex: "+overallPickIndex);
+		log.info("Request ID: "+request.getRequestID()+" Taxi Id: "+taxi.getTaxiId()+" totalWeightInMst: "+totalWeightInMst);
+		
 		request.getPickUpEvent().setIndex(overallPickIndex);
 		response.setPickUpIndex(pickUpindex);
 		response.setPickTimeInMinutes(calculateTime(totalWeightInMst));
+		log.info("Request ID: "+request.getRequestID()+" Taxi Id: "+taxi.getTaxiId()+" PickTimeInMinutes: "+response.getPickTimeInMinutes());
+		
 		double distance = distance(pickUpPoint.getLatitude(), dropVertex.getLatitude(), pickUpPoint.getLongitude(), dropVertex.getLongitude(), 0.0, 0.0);
-		response.setDistanceInKms(distance/1000);
+		log.info("Request ID: "+request.getRequestID()+" Taxi Id: "+taxi.getTaxiId()+" distance: "+distance);
+		
+		response.setDistanceInKms(distance/1000.0);
 		response.setCost(calculateCost(distance));
+		log.info("Request ID: "+request.getRequestID()+" Taxi Id: "+taxi.getTaxiId()+" totalCost: "+response.getCost());
+		
 		int overallDropIndex = 0;
-		double totalWeightToDestInMst = 0;
-		int dropUpindex = 0;
+		double totalWeightToDestInMst = 0.0;
+		int dropOffindex = 0;
 		for(Edge edge: minSpanningTreeEdges) {
 			if(edge.getEndVertex().getType().equals(VertexTypeEnum.DROP)) {
-				dropUpindex++;
+				dropOffindex++;
 			}
 			overallDropIndex++;
 			totalWeightToDestInMst = totalWeightToDestInMst+edge.getWeight();
@@ -125,8 +135,12 @@ public class ScheduleTaxiEventsHelper {
 				break;
 			}
 		}
+		log.info("Request ID: "+request.getRequestID()+" Taxi Id: "+taxi.getTaxiId()+" dropIndex: "+dropOffindex);
+		log.info("Request ID: "+request.getRequestID()+" Taxi Id: "+taxi.getTaxiId()+" OverallDropOffIndex: "+overallDropIndex);
+		log.info("Request ID: "+request.getRequestID()+" Taxi Id: "+taxi.getTaxiId()+" totalWeightToDestInMst: "+totalWeightToDestInMst);
+		
 		request.getDropOffEvent().setIndex(overallDropIndex);
-		response.setPickUpIndex(dropUpindex);
+		response.setPickUpIndex(dropOffindex);
 		response.setTimeToDestinationInMinutes(calculateTime(totalWeightToDestInMst));
 		log.info("Taxi Response Computed: "+response);
 		taxiResponseDao.save(response);
@@ -144,7 +158,8 @@ public class ScheduleTaxiEventsHelper {
 	}
 
 	private static long calculateTime(double totalWeightInMst) {
-		double time = (totalWeightInMst/1000)/AppConstants.AVG_SPEED_OF_TAXI_IN_KMPH;
+		double time = (totalWeightInMst/1000.0)/AppConstants.AVG_SPEED_OF_TAXI_IN_KMPH;
+		log.info("calculateTime: "+time);
 		return Math.round(time)*60;
 	}
 

@@ -53,9 +53,13 @@ public class TaxiResponseController {
 	@GetMapping(value = "/RideSharing/TaxiResponse/{request_id}", produces = MediaType.APPLICATION_JSON_VALUE)
 	@ResponseBody
 	public TaxiResponse getTaxiResponsesByRequestId(@NotBlank @PathVariable(value="request_id") String requestId){
+		log.info("Inside Get Taxi Response Controller");
 		Iterable<TaxiResponse> taxiResponses = taxiResponseDao.getTaxiResponses(taxiResponseDao.getResponseIds(requestId));
+		
 		List<TaxiResponse> taxiResponsesList = new ArrayList<>();
 		taxiResponses.forEach(a -> taxiResponsesList.add(a));
+		log.info("Total No. Of Responses: "+taxiResponsesList.size());
+		
 		Collections.sort(taxiResponsesList, ((a,b)->{
 			int result = Double.valueOf(a.getCost()).compareTo(Double.valueOf(b.getCost()));
 			if(result==0) {
@@ -65,7 +69,7 @@ public class TaxiResponseController {
 				result = Long.valueOf(a.getTimeToDestinationInMinutes()).compareTo(Long.valueOf(b.getTimeToDestinationInMinutes()));
 			}
 			if(result == 0) {
-				result = Integer.valueOf(b.getAvailableSeats()).compareTo(Integer.valueOf(a.getAvailableSeats()));
+				result = Integer.valueOf(a.getAvailableSeats()).compareTo(Integer.valueOf(b.getAvailableSeats()));
 			}
 			return result;
 		}));
