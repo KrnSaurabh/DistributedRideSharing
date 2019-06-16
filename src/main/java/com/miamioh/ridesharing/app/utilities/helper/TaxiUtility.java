@@ -34,7 +34,7 @@ public class TaxiUtility {
 	private GeoOperations<String, String> geoOperations;
 	
 	@Autowired
-	private ScheduleTaxiEventsHelper scheduleTaxiEventsHelper;
+	private ScheduleTaxiEventsHelperPSO scheduleTaxiEventsHelperPSO;
 	
 	private static final String GEO_SPATIAL_KEY = UUID.randomUUID().toString();
 	
@@ -64,8 +64,9 @@ public class TaxiUtility {
 		log.info("RequestId: "+request.getRequestID()+" List of near by Taxis fetched: "+nearByTaxiList);
 		for(Taxi taxi: nearByTaxiList) {
 			//taxi.addEventSchedule(request);
-			CompletableFuture.runAsync(() -> scheduleTaxiEventsHelper.scheduleEvents(taxi, request));
+			CompletableFuture.runAsync(() -> scheduleTaxiEventsHelperPSO.findPSO(taxi, request));
 		}
+		
 	}
 	
 	public Taxi getTaxiInstance(String taxiId) {
