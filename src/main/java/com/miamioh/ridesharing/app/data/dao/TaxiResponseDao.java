@@ -10,5 +10,8 @@ public interface TaxiResponseDao {
 	public void save(TaxiResponse response);
 	public Set<String> getResponseIds(String requestID);
 	public Iterable<TaxiResponse> getTaxiResponses(Collection<String> taxiResponseIds);
+	public void delete(String responseId);
+	public void deleteAll(Collection<TaxiResponse> taxiResponseList);
+	
 
 }

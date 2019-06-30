@@ -5,6 +5,8 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
 
+import com.miamioh.ridesharing.app.data.entity.RideSharingRequestHash;
+import com.miamioh.ridesharing.app.data.repository.RideSharingRequestRepository;
 import com.miamioh.ridesharing.app.entity.Taxi;
 import com.miamioh.ridesharing.app.request.RideSharingRequest;
 import com.miamioh.ridesharing.app.utilities.helper.TaxiUtility;
@@ -18,9 +20,16 @@ public class RideSharingRequestConsumer {
 	@Autowired
 	private TaxiUtility taxiUtility;
 	
+	@Autowired
+	private RideSharingRequestRepository rideSharingRequestRepository;
+	
 	@KafkaListener(topics="${kafka.topic}", containerFactory="batchFactory")
 	public void consumeRideSharingRequest(RideSharingRequest rideSharingRequest, Acknowledgment ack){
 		log.info("Recieved Ride Sharing Request: "+rideSharingRequest);
+		RideSharingRequestHash rideSharingRequestHash = new RideSharingRequestHash();
+		rideSharingRequestHash.setRequestId(rideSharingRequest.getRequestID());
+		rideSharingRequestHash.setRideSharingRequest(rideSharingRequest);
+		rideSharingRequestRepository.save(rideSharingRequestHash);
 		taxiUtility.shareRide(rideSharingRequest);
 		ack.acknowledge();
 	}

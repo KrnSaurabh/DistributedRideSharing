@@ -8,4 +8,5 @@ import com.miamioh.ridesharing.app.data.entity.TempScheduledEventList;
 @Repository
 public interface TempScheduledEventListRepository extends CrudRepository<TempScheduledEventList, String>{
 
+	public void deleteByTaxiId(String taxiId);
 }

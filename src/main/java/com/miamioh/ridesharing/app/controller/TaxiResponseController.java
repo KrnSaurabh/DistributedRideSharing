@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 
 import javax.annotation.Resource;
+import javax.security.auth.message.callback.PrivateKeyCallback.Request;
 import javax.validation.constraints.NotBlank;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,8 +21,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.miamioh.ridesharing.app.constants.AppConstants;
 import com.miamioh.ridesharing.app.data.dao.TaxiResponseDao;
+import com.miamioh.ridesharing.app.data.entity.RideSharingRequestHash;
 import com.miamioh.ridesharing.app.data.entity.TaxiResponse;
+import com.miamioh.ridesharing.app.data.entity.TaxiResponseArchive;
 import com.miamioh.ridesharing.app.data.entity.TempScheduledEventList;
+import com.miamioh.ridesharing.app.data.repository.RideSharingRequestRepository;
+import com.miamioh.ridesharing.app.data.repository.TaxiResponseArchiveRepository;
 import com.miamioh.ridesharing.app.data.repository.TempScheduledEventListRepository;
 import com.miamioh.ridesharing.app.entity.Event;
 import com.miamioh.ridesharing.app.entity.Taxi;
@@ -50,6 +55,13 @@ public class TaxiResponseController {
 	@Resource(name="redisTemplate")
 	private ZSetOperations<String, Event> zSetOperations;
 	
+	@Autowired
+	private RideSharingRequestRepository rideSharingRequestRepository;
+	
+	@Autowired
+	private TaxiResponseArchiveRepository taxiResponseArchiveRepository;
+	
+	
 	@GetMapping(value = "/RideSharing/TaxiResponse/{request_id}", produces = MediaType.APPLICATION_JSON_VALUE)
 	@ResponseBody
 	public TaxiResponse getTaxiResponsesByRequestId(@NotBlank @PathVariable(value="request_id") String requestId){
@@ -73,7 +85,15 @@ public class TaxiResponseController {
 			}
 			return result;
 		}));
-		return taxiResponsesList.get(0);
+		TaxiResponse response = taxiResponsesList.get(0);
+		TaxiResponseArchive archiveResponse = new TaxiResponseArchive();
+		archiveResponse.setResponseId(response.getResponseId());
+		archiveResponse.setTaxiResponse(response);
+		taxiResponseArchiveRepository.save(archiveResponse);
+		taxiResponsesList.remove(response);
+		taxiResponseDao.deleteAll(taxiResponsesList);
+		taxiResponsesList.forEach(resp -> tempScheduledEventListRepository.deleteById(resp.getResponseId()));
+		return response;
 	}
 	
 	@GetMapping(value="/RideSharing/Taxis", produces=MediaType.APPLICATION_JSON_VALUE)
@@ -95,16 +115,16 @@ public class TaxiResponseController {
 		int noOfPassenger = taxi.getNoOfPassenger().get();//add synchronized block
 		if(rideSharingConfirmation.isConfirmed() && noOfPassenger < AppConstants.TAXI_MAX_CAPACITY) {
 			
-			 Optional<TempScheduledEventList> findById = tempScheduledEventListRepository.findById(rideSharingConfirmation.getResponseId());
-			 findById.ifPresent(a -> {
-				 //setOperations.add(rideSharingConfirmation.getTaxiId(), a.getPickUpEvent());// can be used sorted set to sort all events based on timestamp
-				 // setOperations.add(rideSharingConfirmation.getTaxiId(), a.getDropEvent());
+			 Optional<TempScheduledEventList> tempEvents = tempScheduledEventListRepository.findById(rideSharingConfirmation.getResponseId());
+			 tempEvents.ifPresent(a -> {
 				 zSetOperations.add(rideSharingConfirmation.getTaxiId(), a.getPickUpEvent(), a.getPickUpEvent().getIndex());
 				 zSetOperations.add(rideSharingConfirmation.getTaxiId(), a.getDropEvent(), a.getDropEvent().getIndex());
+				 tempScheduledEventListRepository.deleteByTaxiId(a.getTaxiId());
+				// taxiResponseDao.delete(rideSharingConfirmation.getResponseId());// change code to delete by requestId
 				 taxi.getNoOfPassenger().incrementAndGet();
 			 });
 			 
-			 if(findById.isPresent()) {
+			 if(tempEvents.isPresent()) {
 				 ack.setAckStatus(true);
 				 ack.setTaxi(taxiUtility.getTaxiInstance(rideSharingConfirmation.getTaxiId()));
 				 ack.setMessage("Booking Confirmed");
@@ -116,6 +136,8 @@ public class TaxiResponseController {
 			ack.setAckStatus(false);
 			ack.setMessage("Taxi Max capacity reached");
 		}
+		Optional<RideSharingRequestHash> rideSharingRequest = rideSharingRequestRepository.findById(rideSharingConfirmation.getRequestId());
+		rideSharingRequest.ifPresent(request -> taxiUtility.shareRide(request.getRideSharingRequest()));
 		return ack;
 	}
 }

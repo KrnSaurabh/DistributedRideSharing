@@ -33,6 +33,16 @@ public class TaxiResponseDaoImpl implements TaxiResponseDao{
 	}
 	
 	@Override
+	public void delete(String responseId) {
+		repository.deleteById(responseId);
+	}
+	
+	@Override
+	public void deleteAll(Collection<TaxiResponse> taxiResponseList) {
+		repository.deleteAll(taxiResponseList);
+	}
+	
+	@Override
 	public Iterable<TaxiResponse> getTaxiResponses(Collection<String> taxiResponseIds){
 		return repository.findAllById(taxiResponseIds);
 	}

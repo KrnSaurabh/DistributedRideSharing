@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
 
@@ -62,7 +63,8 @@ public class TaxiUtility {
 		}
 		log.info("RequestId: "+request.getRequestID()+" Total Number of near by Taxis fetched: "+nearByTaxiList.size());
 		log.info("RequestId: "+request.getRequestID()+" List of near by Taxis fetched: "+nearByTaxiList);
-		for(Taxi taxi: nearByTaxiList) {
+		List<Taxi> avalableNearByTaxiList = nearByTaxiList.stream().filter(i -> i.getNoOfPassenger().get() < AppConstants.TAXI_MAX_CAPACITY ).collect(Collectors.toList());
+		for(Taxi taxi: avalableNearByTaxiList) {
 			//taxi.addEventSchedule(request);
 			CompletableFuture.runAsync(() -> scheduleTaxiEventsHelperPSO.findPSO(taxi, request));
 		}

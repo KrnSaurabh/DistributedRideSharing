@@ -10,7 +10,7 @@ import com.miamioh.ridesharing.app.entity.Event;
 import lombok.Getter;
 import lombok.Setter;
 
-@RedisHash(value="TempScheduledEventList", timeToLive=300L)
+@RedisHash(value="TempScheduledEventList", timeToLive=90L)
 @Getter @Setter
 public class TempScheduledEventList implements Serializable{
 	

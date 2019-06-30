@@ -17,5 +17,6 @@ public class Event {
 	private boolean isPickup;
 	private int index;
 	private Date timeOfOccurance;
+	private boolean isCompleted;
 	
 }
