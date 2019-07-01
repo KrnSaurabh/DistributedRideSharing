@@ -33,8 +33,8 @@ public class TaxiResponseDaoImpl implements TaxiResponseDao{
 	}
 	
 	@Override
-	public void delete(String responseId) {
-		repository.deleteById(responseId);
+	public void delete(String taxiId) {
+		repository.deleteById(taxiId);
 	}
 	
 	@Override
