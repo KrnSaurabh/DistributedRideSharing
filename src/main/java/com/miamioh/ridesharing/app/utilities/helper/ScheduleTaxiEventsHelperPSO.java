@@ -1,5 +1,6 @@
 package com.miamioh.ridesharing.app.utilities.helper;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -13,6 +14,9 @@ import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.miamioh.ridesharing.app.constants.AppConstants;
 import com.miamioh.ridesharing.app.data.dao.TaxiResponseDao;
 import com.miamioh.ridesharing.app.data.entity.TaxiResponse;
@@ -39,11 +43,29 @@ public class ScheduleTaxiEventsHelperPSO {
 	private SetOperations<String, String> setOperations;
 	
 	@Resource(name="redisTemplate")
-	private ZSetOperations<String, Event> zSetOperations;
+	private ZSetOperations<String, String> zSetOperations;
 	
 	public void findPSO(Taxi taxi, RideSharingRequest request) {
 		log.info("Inside PSO Taxi Scheduler Utility RequestId: "+request.getRequestID());
-		Set<Event> events = zSetOperations.range(taxi.getTaxiId(), 0, -1);
+		Set<String> eventListAsStr = zSetOperations.range(taxi.getTaxiId(), 0, -1);
+		List<Event> events = new ArrayList<>();
+		ObjectMapper mapper = new ObjectMapper();
+		for(String eventStr: eventListAsStr) {
+			try {
+				Event eventObj = mapper.readValue(eventStr, Event.class);
+				events.add(eventObj);
+			} catch (JsonParseException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (JsonMappingException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+		}
 		List<Event> upcomingEvents = events.stream().filter(i -> !(i.isCompleted())).collect(Collectors.toList());
 		TaxiResponse response = new TaxiResponse();
 		if(upcomingEvents !=null && !upcomingEvents.isEmpty()) {

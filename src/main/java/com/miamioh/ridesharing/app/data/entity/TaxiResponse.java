@@ -10,7 +10,7 @@ import lombok.Setter;
 import lombok.ToString;
 
 @Getter @Setter @ToString
-@RedisHash(value = "TaxiResponse", timeToLive=90L)
+@RedisHash(value = "TaxiResponse", timeToLive=300L)
 public class TaxiResponse implements Serializable {
 	
 	@Id

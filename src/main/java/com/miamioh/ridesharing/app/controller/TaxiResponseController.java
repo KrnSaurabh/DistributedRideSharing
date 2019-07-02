@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.http.MediaType;
+import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,6 +23,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.miamioh.ridesharing.app.constants.AppConstants;
 import com.miamioh.ridesharing.app.data.dao.TaxiResponseDao;
 import com.miamioh.ridesharing.app.data.entity.RideSharingRequestHash;
@@ -56,7 +59,7 @@ public class TaxiResponseController {
 	private SetOperations<String, String> setOperations;
 	
 	@Resource(name="redisTemplate")
-	private ZSetOperations<String, Event> zSetOperations;
+	private ZSetOperations<String, String> zSetOperations;
 	
 	@Autowired
 	private RideSharingRequestRepository rideSharingRequestRepository;
@@ -127,13 +130,22 @@ public class TaxiResponseController {
 			
 			 Optional<TempScheduledEventList> tempEvents = tempScheduledEventListRepository.findById(rideSharingConfirmation.getResponseId());
 			 tempEvents.ifPresent(a -> {
-				 zSetOperations.add(rideSharingConfirmation.getTaxiId(), a.getPickUpEvent(), a.getPickUpEvent().getIndex());
-				 zSetOperations.add(rideSharingConfirmation.getTaxiId(), a.getDropEvent(), a.getDropEvent().getIndex());
+				 try {
+				 ObjectMapper mapper = new ObjectMapper();
+				 String pickUpEventObjToStr = mapper.writeValueAsString(a.getPickUpEvent());
+				 String dropEventObjToStr = mapper.writeValueAsString(a.getDropEvent());
+				
+				 zSetOperations.add(rideSharingConfirmation.getTaxiId(), pickUpEventObjToStr, a.getPickUpEvent().getIndex());
+				 zSetOperations.add(rideSharingConfirmation.getTaxiId(), dropEventObjToStr, a.getDropEvent().getIndex());
 				 Set<String> taxiResponseIds = setOperations.members("TaxiResponseMap:"+taxi.getTaxiId());
 				 taxiResponseIds.forEach(responseId -> tempScheduledEventListRepository.deleteById(responseId));
 				 setOperations.remove("TaxiResponseMap:"+taxi.getTaxiId(), taxiResponseIds.toArray());
 				// taxiResponseDao.delete(rideSharingConfirmation.getResponseId());// change code to delete by requestId
 				 taxi.getNoOfPassenger().incrementAndGet();
+				 } catch (JsonProcessingException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
 			 });
 			 
 			 if(tempEvents.isPresent()) {
