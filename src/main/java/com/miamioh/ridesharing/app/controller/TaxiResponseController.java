@@ -8,14 +8,12 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import javax.annotation.Resource;
-import javax.security.auth.message.callback.PrivateKeyCallback.Request;
 import javax.validation.constraints.NotBlank;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.http.MediaType;
-import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,14 +26,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.miamioh.ridesharing.app.constants.AppConstants;
 import com.miamioh.ridesharing.app.data.dao.TaxiResponseDao;
 import com.miamioh.ridesharing.app.data.entity.RideSharingRequestHash;
+import com.miamioh.ridesharing.app.data.entity.Taxi;
 import com.miamioh.ridesharing.app.data.entity.TaxiResponse;
 import com.miamioh.ridesharing.app.data.entity.TaxiResponseArchive;
 import com.miamioh.ridesharing.app.data.entity.TempScheduledEventList;
 import com.miamioh.ridesharing.app.data.repository.RideSharingRequestRepository;
+import com.miamioh.ridesharing.app.data.repository.TaxiHub;
 import com.miamioh.ridesharing.app.data.repository.TaxiResponseArchiveRepository;
 import com.miamioh.ridesharing.app.data.repository.TempScheduledEventListRepository;
-import com.miamioh.ridesharing.app.entity.Event;
-import com.miamioh.ridesharing.app.entity.Taxi;
 import com.miamioh.ridesharing.app.request.RideSharingConfirmation;
 import com.miamioh.ridesharing.app.request.RideSharingConfirmationAck;
 import com.miamioh.ridesharing.app.utilities.helper.TaxiUtility;
@@ -67,6 +65,9 @@ public class TaxiResponseController {
 	@Autowired
 	private TaxiResponseArchiveRepository taxiResponseArchiveRepository;
 	
+	@Autowired
+	private TaxiHub taxiHub;
+	
 	
 	@GetMapping(value = "/RideSharing/TaxiResponse/{request_id}", produces = MediaType.APPLICATION_JSON_VALUE)
 	@ResponseBody
@@ -76,8 +77,11 @@ public class TaxiResponseController {
 		
 		List<TaxiResponse> taxiResponsesList = new ArrayList<>();
 		taxiResponses.forEach(a -> taxiResponsesList.add(a));
+		if(taxiResponsesList.isEmpty()) {
+			return null;
+		}
 		log.info("Total No. Of Responses: "+taxiResponsesList.size());
-		if(taxiResponsesList != null && !taxiResponsesList.isEmpty()) {
+		
 			Collections.sort(taxiResponsesList, ((a,b)->{
 				int result = Double.valueOf(a.getCost()).compareTo(Double.valueOf(b.getCost()));
 				if(result==0) {
@@ -103,9 +107,6 @@ public class TaxiResponseController {
 			});
 			
 			return response;
-		}else {
-			return null;
-		}
 		
 	}
 	
@@ -121,15 +122,26 @@ public class TaxiResponseController {
 	@PostMapping(value = "/RideSharing/RideConfirmation", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
 	@ResponseBody
 	public RideSharingConfirmationAck confirmRide(@RequestBody RideSharingConfirmation rideSharingConfirmation) {
-		
+		log.info("Inside Confirm Ride Controller");
 		RideSharingConfirmationAck ack = new RideSharingConfirmationAck();
 		ack.setResponseId(rideSharingConfirmation.getResponseId());
 		Taxi taxi = taxiUtility.getTaxiInstance(rideSharingConfirmation.getTaxiId());
-		int noOfPassenger = taxi.getNoOfPassenger().get();//add synchronized block
-		if(rideSharingConfirmation.isConfirmed() && noOfPassenger < AppConstants.TAXI_MAX_CAPACITY) {
+		if(rideSharingConfirmation.isConfirmed() && taxi.getNoOfPassenger() < AppConstants.TAXI_MAX_CAPACITY) {
 			
 			 Optional<TempScheduledEventList> tempEvents = tempScheduledEventListRepository.findById(rideSharingConfirmation.getResponseId());
 			 tempEvents.ifPresent(a -> {
+				 log.info("Thread Id: "+ Thread.currentThread().getId()+ " Taxi Id: "+taxi.getTaxiId()+" No of Passenger before synchronized block: "+taxi.getNoOfPassenger());
+				 synchronized (this) {
+					 if(taxi.getNoOfPassenger() < AppConstants.TAXI_MAX_CAPACITY) {
+						 taxi.setNoOfPassenger(taxi.getNoOfPassenger()+1);
+						 taxiHub.save(taxi);
+					 }else {
+						 ack.setAckStatus(false);
+						 ack.setMessage("Taxi Max capacity reached");
+						 return;
+					 }
+				 }
+				 log.info("Thread Id: "+ Thread.currentThread().getId()+ " Taxi Id: "+taxi.getTaxiId()+" No of Passenger after synchronized block: "+taxiUtility.getTaxiInstance(rideSharingConfirmation.getTaxiId()).getNoOfPassenger());
 				 try {
 				 ObjectMapper mapper = new ObjectMapper();
 				 String pickUpEventObjToStr = mapper.writeValueAsString(a.getPickUpEvent());
@@ -141,18 +153,18 @@ public class TaxiResponseController {
 				 taxiResponseIds.forEach(responseId -> tempScheduledEventListRepository.deleteById(responseId));
 				 setOperations.remove("TaxiResponseMap:"+taxi.getTaxiId(), taxiResponseIds.toArray());
 				// taxiResponseDao.delete(rideSharingConfirmation.getResponseId());// change code to delete by requestId
-				 taxi.getNoOfPassenger().incrementAndGet();
-				 } catch (JsonProcessingException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-			 });
-			 
-			 if(tempEvents.isPresent()) {
 				 ack.setAckStatus(true);
 				 ack.setTaxi(taxiUtility.getTaxiInstance(rideSharingConfirmation.getTaxiId()));
 				 ack.setMessage("Booking Confirmed");
-			 }else {
+				 log.info("Booking Confirmed RequestId: "+rideSharingConfirmation.getRequestId());
+				 } catch (JsonProcessingException e) {
+					 ack.setAckStatus(false);
+					 ack.setMessage("Booking Failed");
+					 e.printStackTrace();
+					}
+			 });
+			 
+			 if(!tempEvents.isPresent()) {
 				 ack.setAckStatus(false);
 				 ack.setMessage("Timed Out");
 			 }

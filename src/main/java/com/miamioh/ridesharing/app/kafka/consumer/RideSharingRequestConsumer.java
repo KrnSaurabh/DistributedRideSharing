@@ -6,8 +6,8 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
 
 import com.miamioh.ridesharing.app.data.entity.RideSharingRequestHash;
+import com.miamioh.ridesharing.app.data.entity.Taxi;
 import com.miamioh.ridesharing.app.data.repository.RideSharingRequestRepository;
-import com.miamioh.ridesharing.app.entity.Taxi;
 import com.miamioh.ridesharing.app.request.RideSharingRequest;
 import com.miamioh.ridesharing.app.utilities.helper.TaxiUtility;
 

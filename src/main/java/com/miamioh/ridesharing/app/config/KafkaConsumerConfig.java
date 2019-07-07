@@ -8,11 +8,10 @@ import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
-import org.springframework.kafka.support.converter.StringJsonMessageConverter;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 
 import com.miamioh.ridesharing.app.config.params.KafkaConsumerConfigParams;
-import com.miamioh.ridesharing.app.entity.Taxi;
+import com.miamioh.ridesharing.app.data.entity.Taxi;
 import com.miamioh.ridesharing.app.request.RideSharingRequest;
 
 @Configuration

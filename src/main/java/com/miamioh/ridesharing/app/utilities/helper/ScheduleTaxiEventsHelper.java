@@ -16,11 +16,11 @@ import org.springframework.stereotype.Service;
 import com.miamioh.ridesharing.app.constants.AppConstants;
 import com.miamioh.ridesharing.app.constants.VertexTypeEnum;
 import com.miamioh.ridesharing.app.data.dao.TaxiResponseDao;
+import com.miamioh.ridesharing.app.data.entity.Taxi;
 import com.miamioh.ridesharing.app.data.entity.TaxiResponse;
 import com.miamioh.ridesharing.app.data.entity.TempScheduledEventList;
 import com.miamioh.ridesharing.app.data.repository.TempScheduledEventListRepository;
 import com.miamioh.ridesharing.app.entity.Event;
-import com.miamioh.ridesharing.app.entity.Taxi;
 import com.miamioh.ridesharing.app.request.RideSharingRequest;
 
 import lombok.extern.slf4j.Slf4j;
@@ -92,7 +92,7 @@ public class ScheduleTaxiEventsHelper {
 		response.setTaxiId(taxi.getTaxiId());
 		response.setTaxiNumber(taxi.getTaxiNumber());
 		response.setTaxiModel(taxi.getModel());
-		response.setAvailableSeats(AppConstants.TAXI_MAX_CAPACITY-taxi.getNoOfPassenger().get()); // increament no Of passenger in each taxi confirmation
+		response.setAvailableSeats(AppConstants.TAXI_MAX_CAPACITY-taxi.getNoOfPassenger()); // increament no Of passenger in each taxi confirmation
 		int overallPickIndex = 0;
 		int pickUpindex = 0;
 		double totalWeightInMst = 0.0;

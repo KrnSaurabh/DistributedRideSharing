@@ -1,6 +1,6 @@
 package com.miamioh.ridesharing.app.request;
 
-import com.miamioh.ridesharing.app.entity.Taxi;
+import com.miamioh.ridesharing.app.data.entity.Taxi;
 
 import lombok.Getter;
 import lombok.Setter;

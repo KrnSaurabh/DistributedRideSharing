@@ -19,11 +19,11 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.miamioh.ridesharing.app.constants.AppConstants;
 import com.miamioh.ridesharing.app.data.dao.TaxiResponseDao;
+import com.miamioh.ridesharing.app.data.entity.Taxi;
 import com.miamioh.ridesharing.app.data.entity.TaxiResponse;
 import com.miamioh.ridesharing.app.data.entity.TempScheduledEventList;
 import com.miamioh.ridesharing.app.data.repository.TempScheduledEventListRepository;
 import com.miamioh.ridesharing.app.entity.Event;
-import com.miamioh.ridesharing.app.entity.Taxi;
 import com.miamioh.ridesharing.app.pso.utilities.PSOImpl;
 import com.miamioh.ridesharing.app.request.RideSharingRequest;
 
@@ -82,7 +82,7 @@ public class ScheduleTaxiEventsHelperPSO {
 			response.setTaxiId(taxi.getTaxiId());
 			response.setTaxiNumber(taxi.getTaxiNumber());
 			response.setTaxiModel(taxi.getModel());
-			response.setAvailableSeats(AppConstants.TAXI_MAX_CAPACITY-taxi.getNoOfPassenger().get()); // increament no Of passenger in each taxi confirmation
+			response.setAvailableSeats(AppConstants.TAXI_MAX_CAPACITY-taxi.getNoOfPassenger()); // increament no Of passenger in each taxi confirmation
 			
 			int overallPickIndex = 0;
 			int pickUpindex = 0;
@@ -145,7 +145,7 @@ public class ScheduleTaxiEventsHelperPSO {
 			saveEventsInTempScheduledEventList(request, responseId, taxi.getTaxiId());
 		}else {
 			//write code to directly compute route without PSO
-			log.info("No of passengers : "+taxi.getNoOfPassenger().get()+ " PSO is not called");
+			log.info("No of passengers : "+taxi.getNoOfPassenger()+ " PSO is not called");
 			// taxi is empty and it can take in the new request
 			List<Event> singleRequest=new ArrayList<>();
 			singleRequest.add(0, request.getPickUpEvent());
@@ -233,7 +233,7 @@ public class ScheduleTaxiEventsHelperPSO {
 		response.setResponseId(responseId);
 		response.setRequestId(request.getRequestID());
 		response.setTaxiId(taxi.getTaxiId());
-		response.setAvailableSeats(AppConstants.TAXI_MAX_CAPACITY-taxi.getNoOfPassenger().get()); // increment no Of passenger in each taxi confirmation
+		response.setAvailableSeats(AppConstants.TAXI_MAX_CAPACITY-taxi.getNoOfPassenger()); // increment no Of passenger in each taxi confirmation
 		return response;
 	}
 }

@@ -2,10 +2,8 @@ package com.miamioh.ridesharing.app.utilities.helper;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import javax.annotation.Resource;
@@ -22,7 +20,8 @@ import org.springframework.data.redis.core.GeoOperations;
 import org.springframework.stereotype.Component;
 
 import com.miamioh.ridesharing.app.constants.AppConstants;
-import com.miamioh.ridesharing.app.entity.Taxi;
+import com.miamioh.ridesharing.app.data.entity.Taxi;
+import com.miamioh.ridesharing.app.data.repository.TaxiHub;
 import com.miamioh.ridesharing.app.request.RideSharingRequest;
 
 import lombok.extern.slf4j.Slf4j;
@@ -39,13 +38,16 @@ public class TaxiUtility {
 	
 	private static final String GEO_SPATIAL_KEY = UUID.randomUUID().toString();
 	
-	private static final Map<String, Taxi> taxiHub = new ConcurrentHashMap<>();
+	//private static final Map<String, Taxi> taxiHub = new ConcurrentHashMap<>();
+	
+	@Autowired
+	private TaxiHub taxiHub;
 	
 	public void registerTaxi(Taxi taxi) {
 		log.info("Registering Taxi with taxiId: "+taxi.getTaxiId());
-		if(taxi!=null && !taxiHub.containsKey(taxi.getTaxiId())) {
+		if(!taxiHub.findById(taxi.getTaxiId()).isPresent()) {
 			this.geoOperations.add(GEO_SPATIAL_KEY, new Point(taxi.getLongitude(), taxi.getLatitude()), taxi.getTaxiId());
-			taxiHub.putIfAbsent(taxi.getTaxiId(), taxi);
+			taxiHub.save(taxi);
 		}
 	}
 	
@@ -59,10 +61,10 @@ public class TaxiUtility {
 		List<GeoResult<GeoLocation<String>>> content = radius.getContent();
 		List<Taxi> nearByTaxiList = new ArrayList<>();
 		for(GeoResult< GeoLocation<String>> geoResult: content) {
-			nearByTaxiList.add(taxiHub.get((geoResult.getContent().getName())));
+			taxiHub.findById((geoResult.getContent().getName())).ifPresent(taxi -> nearByTaxiList.add(taxi));
 		}
 		
-		List<Taxi> avalableNearByTaxiList = nearByTaxiList.stream().filter(i -> i.getNoOfPassenger().get() < AppConstants.TAXI_MAX_CAPACITY ).collect(Collectors.toList());
+		List<Taxi> avalableNearByTaxiList = nearByTaxiList.stream().filter(i -> i.getNoOfPassenger() < AppConstants.TAXI_MAX_CAPACITY ).collect(Collectors.toList());
 		log.info("RequestId: "+request.getRequestID()+" Total Number of near by Taxis fetched: "+avalableNearByTaxiList.size());
 		log.info("RequestId: "+request.getRequestID()+" List of near by Taxis fetched: "+avalableNearByTaxiList);
 		for(Taxi taxi: avalableNearByTaxiList) {
@@ -73,11 +75,12 @@ public class TaxiUtility {
 	}
 	
 	public Taxi getTaxiInstance(String taxiId) {
-		return taxiHub.get(taxiId);
+		return taxiHub.findById(taxiId).orElse(null);
 	}
 	
 	public List<Taxi> getAllTaxi(){
-		List<Taxi> taxis = new ArrayList<>(taxiHub.values());
+		List<Taxi> taxis = new ArrayList<>();
+		taxiHub.findAll().forEach(taxi -> taxis.add(taxi));
 		return taxis;
 	}
 
