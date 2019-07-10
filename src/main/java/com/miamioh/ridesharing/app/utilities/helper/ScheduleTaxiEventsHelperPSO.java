@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StopWatch;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -46,6 +47,8 @@ public class ScheduleTaxiEventsHelperPSO {
 	private ZSetOperations<String, String> zSetOperations;
 	
 	public void findPSO(Taxi taxi, RideSharingRequest request) {
+		StopWatch watch = new StopWatch();
+		watch.start();
 		log.info("Inside PSO Taxi Scheduler Utility RequestId: "+request.getRequestID());
 		Set<String> eventListAsStr = zSetOperations.range(taxi.getTaxiId(), 0, -1);
 		List<Event> events = new ArrayList<>();
@@ -175,6 +178,8 @@ public class ScheduleTaxiEventsHelperPSO {
 			//Alert:: overall index is not set || index should start from 1
 			
 			log.info("Taxi Response Computed: "+response);
+			watch.stop();
+			response.setPsoResponseTimeInSeconds(watch.getTotalTimeSeconds());
 			taxiResponseDao.save(response);
 			saveEventsInTempScheduledEventList(request, response.getResponseId(), taxi.getTaxiId());
 

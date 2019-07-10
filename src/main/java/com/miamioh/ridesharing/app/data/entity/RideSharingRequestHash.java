@@ -10,7 +10,7 @@ import com.miamioh.ridesharing.app.request.RideSharingRequest;
 import lombok.Getter;
 import lombok.Setter;
 
-@RedisHash(value="RideSharingRequestHash")
+@RedisHash(value="RideSharingRequestHash", timeToLive=300L)
 @Getter @Setter
 public class RideSharingRequestHash implements Serializable{
 	

@@ -28,11 +28,9 @@ import com.miamioh.ridesharing.app.data.dao.TaxiResponseDao;
 import com.miamioh.ridesharing.app.data.entity.RideSharingRequestHash;
 import com.miamioh.ridesharing.app.data.entity.Taxi;
 import com.miamioh.ridesharing.app.data.entity.TaxiResponse;
-import com.miamioh.ridesharing.app.data.entity.TaxiResponseArchive;
 import com.miamioh.ridesharing.app.data.entity.TempScheduledEventList;
 import com.miamioh.ridesharing.app.data.repository.RideSharingRequestRepository;
 import com.miamioh.ridesharing.app.data.repository.TaxiHub;
-import com.miamioh.ridesharing.app.data.repository.TaxiResponseArchiveRepository;
 import com.miamioh.ridesharing.app.data.repository.TempScheduledEventListRepository;
 import com.miamioh.ridesharing.app.request.RideSharingConfirmation;
 import com.miamioh.ridesharing.app.request.RideSharingConfirmationAck;
@@ -63,9 +61,6 @@ public class TaxiResponseController {
 	private RideSharingRequestRepository rideSharingRequestRepository;
 	
 	@Autowired
-	private TaxiResponseArchiveRepository taxiResponseArchiveRepository;
-	
-	@Autowired
 	private TaxiHub taxiHub;
 	
 	
@@ -84,23 +79,20 @@ public class TaxiResponseController {
 		
 			Collections.sort(taxiResponsesList, ((a,b)->{
 				int result = Double.valueOf(a.getCost()).compareTo(Double.valueOf(b.getCost()));
+				if(result == 0) {
+					result = Integer.valueOf(a.getAvailableSeats()).compareTo(Integer.valueOf(b.getAvailableSeats()));
+				}
 				if(result==0) {
 					result = Long.valueOf(a.getPickTimeInMinutes()).compareTo(Long.valueOf(b.getPickTimeInMinutes()));
 				}
 				if(result == 0) {
 					result = Long.valueOf(a.getTimeToDestinationInMinutes()).compareTo(Long.valueOf(b.getTimeToDestinationInMinutes()));
 				}
-				if(result == 0) {
-					result = Integer.valueOf(a.getAvailableSeats()).compareTo(Integer.valueOf(b.getAvailableSeats()));
-				}
+				
 				return result;
 			}));
 			TaxiResponse response = taxiResponsesList.get(0);
 			CompletableFuture.runAsync(() ->{
-				TaxiResponseArchive archiveResponse = new TaxiResponseArchive();
-				archiveResponse.setResponseId(response.getResponseId());
-				archiveResponse.setTaxiResponse(response);
-				taxiResponseArchiveRepository.save(archiveResponse);
 				taxiResponseDao.deleteAll(taxiResponsesList);
 				taxiResponsesList.remove(response);
 				taxiResponsesList.forEach(resp -> tempScheduledEventListRepository.deleteById(resp.getResponseId()));
@@ -129,26 +121,32 @@ public class TaxiResponseController {
 		if(rideSharingConfirmation.isConfirmed() && taxi.getNoOfPassenger() < AppConstants.TAXI_MAX_CAPACITY) {
 			
 			 Optional<TempScheduledEventList> tempEvents = tempScheduledEventListRepository.findById(rideSharingConfirmation.getResponseId());
-			 tempEvents.ifPresent(a -> {
+			 if(tempEvents.isPresent()) {
+				 TempScheduledEventList tempEvent = tempEvents.get();
 				 log.info("Thread Id: "+ Thread.currentThread().getId()+ " Taxi Id: "+taxi.getTaxiId()+" No of Passenger before synchronized block: "+taxi.getNoOfPassenger());
 				 synchronized (this) {
+					 taxi = taxiUtility.getTaxiInstance(rideSharingConfirmation.getTaxiId());
 					 if(taxi.getNoOfPassenger() < AppConstants.TAXI_MAX_CAPACITY) {
 						 taxi.setNoOfPassenger(taxi.getNoOfPassenger()+1);
 						 taxiHub.save(taxi);
 					 }else {
 						 ack.setAckStatus(false);
 						 ack.setMessage("Taxi Max capacity reached");
-						 return;
+						 CompletableFuture.runAsync(() -> {
+								Optional<RideSharingRequestHash> rideSharingRequest = rideSharingRequestRepository.findById(rideSharingConfirmation.getRequestId());
+								rideSharingRequest.ifPresent(request -> taxiUtility.shareRide(request.getRideSharingRequest()));
+								});
+						 return ack;
 					 }
 				 }
 				 log.info("Thread Id: "+ Thread.currentThread().getId()+ " Taxi Id: "+taxi.getTaxiId()+" No of Passenger after synchronized block: "+taxiUtility.getTaxiInstance(rideSharingConfirmation.getTaxiId()).getNoOfPassenger());
 				 try {
 				 ObjectMapper mapper = new ObjectMapper();
-				 String pickUpEventObjToStr = mapper.writeValueAsString(a.getPickUpEvent());
-				 String dropEventObjToStr = mapper.writeValueAsString(a.getDropEvent());
+				 String pickUpEventObjToStr = mapper.writeValueAsString(tempEvent.getPickUpEvent());
+				 String dropEventObjToStr = mapper.writeValueAsString(tempEvent.getDropEvent());
 				
-				 zSetOperations.add(rideSharingConfirmation.getTaxiId(), pickUpEventObjToStr, a.getPickUpEvent().getIndex());
-				 zSetOperations.add(rideSharingConfirmation.getTaxiId(), dropEventObjToStr, a.getDropEvent().getIndex());
+				 zSetOperations.add(rideSharingConfirmation.getTaxiId(), pickUpEventObjToStr, tempEvent.getPickUpEvent().getIndex());
+				 zSetOperations.add(rideSharingConfirmation.getTaxiId(), dropEventObjToStr, tempEvent.getDropEvent().getIndex());
 				 Set<String> taxiResponseIds = setOperations.members("TaxiResponseMap:"+taxi.getTaxiId());
 				 taxiResponseIds.forEach(responseId -> tempScheduledEventListRepository.deleteById(responseId));
 				 setOperations.remove("TaxiResponseMap:"+taxi.getTaxiId(), taxiResponseIds.toArray());
@@ -162,7 +160,7 @@ public class TaxiResponseController {
 					 ack.setMessage("Booking Failed");
 					 e.printStackTrace();
 					}
-			 });
+			 }
 			 
 			 if(!tempEvents.isPresent()) {
 				 ack.setAckStatus(false);

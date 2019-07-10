@@ -10,7 +10,7 @@ import lombok.Setter;
 import lombok.ToString;
 
 @Getter @Setter @ToString
-@RedisHash(value = "TaxiResponse", timeToLive=300L)
+@RedisHash(value = "TaxiResponse", timeToLive=90L)
 public class TaxiResponse implements Serializable {
 	
 	@Id
@@ -26,5 +26,6 @@ public class TaxiResponse implements Serializable {
 	private double distanceInKms;
 	private double cost;
 	private Long pickTimeInMinutes;
+	private Double psoResponseTimeInSeconds;
 	
 }

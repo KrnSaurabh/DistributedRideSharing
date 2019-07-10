@@ -11,11 +11,11 @@ import com.miamioh.ridesharing.app.entity.Event;
 
 public class PSOImpl {
 
-	private final int PARTICLE_COUNT = 30;
+	private final int PARTICLE_COUNT = 100;
 	private final int V_MAX = 4; // Maximum velocity change allowed.
 	// Range: 0 >= V_MAX < noOfNodes
 
-	private final int MAX_EPOCHS = 10000;
+	private final int MAX_EPOCHS = 100;
 
 	private ArrayList<Particle> particles = new ArrayList<Particle>();
 
