@@ -12,6 +12,7 @@ import javax.validation.constraints.NotBlank;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.SetOperations;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -54,6 +55,9 @@ public class TaxiResponseController {
 	@Resource(name="redisTemplate")
 	private SetOperations<String, String> setOperations;
 	
+	@Autowired
+	private StringRedisTemplate stringRedisTemplate;
+	
 	@Resource(name="redisTemplate")
 	private ZSetOperations<String, String> zSetOperations;
 	
@@ -69,7 +73,6 @@ public class TaxiResponseController {
 	public TaxiResponse getTaxiResponsesByRequestId(@NotBlank @PathVariable(value="request_id") String requestId){
 		log.info("Inside Get Taxi Response Controller");
 		Iterable<TaxiResponse> taxiResponses = taxiResponseDao.getTaxiResponses(taxiResponseDao.getResponseIds(requestId));
-		
 		List<TaxiResponse> taxiResponsesList = new ArrayList<>();
 		taxiResponses.forEach(a -> taxiResponsesList.add(a));
 		if(taxiResponsesList.isEmpty()) {
@@ -94,6 +97,7 @@ public class TaxiResponseController {
 			TaxiResponse response = taxiResponsesList.get(0);
 			CompletableFuture.runAsync(() ->{
 				taxiResponseDao.deleteAll(taxiResponsesList);
+				stringRedisTemplate.delete(requestId);
 				taxiResponsesList.remove(response);
 				taxiResponsesList.forEach(resp -> tempScheduledEventListRepository.deleteById(resp.getResponseId()));
 			});
